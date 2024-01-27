@@ -27,14 +27,26 @@ struct Navigation: Decodable {
     }
 }
 struct UIElement: Decodable, Hashable {
-    var type: String
+    enum UIType: String, Decodable {
+        // 여기에 추가해줘야 Cell이 나옵니다.
+
+        case text = "TEXT"
+        case image = "IMAGE"
+//        case button = "BUTTON_CTA"
+    }
+    
+    var type : UIType? {
+        return UIType(rawValue: typeString)
+    }
+    private var typeString: String
+
     var title: String?
     var imageURLString: String?
     var font: String?
     var children: [UIElement]?
 
     enum CodingKeys: String, CodingKey {
-        case type
+        case typeString = "type"
         case title
         case font
         case imageURLString = "image_url"
@@ -58,7 +70,11 @@ class ContentListViewController: UIViewController, UITableViewDelegate, UITableV
         view.addSubview(tableView)
         tableView.delegate = self
         tableView.dataSource = self
-        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
+        tableView.allowsSelection = false
+//        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "cell")
+        tableView.register(TextTableViewCell.self, forCellReuseIdentifier: UIElement.UIType.text.rawValue)
+        tableView.register(ImageTableViewCell.self, forCellReuseIdentifier: UIElement.UIType.image.rawValue)
+
         tableView.translatesAutoresizingMaskIntoConstraints = false
         tableView.topAnchor.constraint(equalTo: view.topAnchor).isActive = true
         tableView.leftAnchor.constraint(equalTo: view.leftAnchor).isActive = true
@@ -98,20 +114,23 @@ class ContentListViewController: UIViewController, UITableViewDelegate, UITableV
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        guard let element = screenData?.body?.children?[indexPath.row] else {
+        guard let element = screenData?.body?.children?[indexPath.row],
+        let type = element.type else {
             return UITableViewCell()
         }
 
-        let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath)
+        let cell = tableView.dequeueReusableCell(withIdentifier: type.rawValue, for: indexPath)
 
-        switch element.type {
+        switch type.rawValue {
         case "TEXT":
-            cell.textLabel?.text = element.title
+            if let cell = cell as? TextTableViewCell {
+                cell.setup(element: element)
+            }
+//            cell.textLabel?.text = element.title
             // 여기서 폰트 설정 등 추가적인 구성을 할 수 있습니다.
         case "IMAGE":
-            if let urlString = element.imageURLString, let url = URL(string: urlString) {
-                // 이미지를 다운로드하고 표시하는 로직을 추가합니다.
-                // 예: URLSession.shared.dataTask로 이미지 다운로드
+            if let cell = cell as? ImageTableViewCell {
+                cell.setup(element: element)
             }
         case "BUTTON_CTA":
             break
